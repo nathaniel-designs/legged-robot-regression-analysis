@@ -1,0 +1,27 @@
+{
+    "id": "AAAD9824",
+    "path": "~/reganalysis/roboanalysis.r",
+    "project_path": "roboanalysis.r",
+    "type": "r_source",
+    "hash": "1433038836",
+    "contents": "",
+    "dirty": true,
+    "created": 1759334063267.0,
+    "source_on_save": false,
+    "relative_order": 1,
+    "properties": {
+        "tempName": "Untitled1",
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "69,0",
+        "scrollLine": "37"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1759344577,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1759868953265,
+    "read_only": false,
+    "read_only_alternatives": []
+}
