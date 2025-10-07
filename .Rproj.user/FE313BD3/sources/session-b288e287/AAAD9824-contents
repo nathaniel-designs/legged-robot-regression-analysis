@@ -68,3 +68,7 @@ print(cor(robo_data$roll, robo_data$trans_y))
 print(cor(robo_data$pitch, robo_data$trans_y))
 print(cor(robo_data$yaw, robo_data$trans_y))
 
+
+
+
+
