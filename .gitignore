@@ -1,2 +1,13 @@
 .Rhistory
+<<<<<<< HEAD
 .Rproj.user
+=======
+<<<<<<< HEAD
+*.Rhistory
+=======
+.Rproj.user
+>>>>>>> 0e15c18 (Add code to calculate jerk)
+.Rproj.user
+.RData
+.Rhistory
+>>>>>>> HEAD@{1}
