@@ -1,74 +1,40 @@
 #install.packages("readr")
-
 library(readr)
-robo_data <- read_csv("gt_0705_parking_00.csv")
+
+robot_data <- read_csv("robot_dataset.csv")
 
 #Translation note:
 #X = left-right, Y = forward-backward
-head(robo_data, 10)
-summary(robo_data)
+head(robot_data, 10)
+summary(robot_data)
 
-par(mar=c(4,4,2,2))
+avg_angularvmag <- mean(robot_data$angular_v_mag)
+median_angularvmag <- median(robot_data$angular_v_mag)
+stddev_angularvmag <- sd(robot_data$angular_v_mag)
+min_angularvmag <- min(robot_data$angular_v_mag, na.rm = TRUE)
+max_angularvmag <- max(robot_data$angular_v_mag, na.rm = TRUE)
+range_angularvmag <- max_angularvmag-min_angularvmag
 
-#Right-skewed distribution
-hist(robo_data$trans_x, main="Histogram of trans_x", xlab="trans_x")
+avg_jmag <- mean(robot_data$jmag)
+median_jmag <- median(robot_data$jmag)
+stddev_jmag <- sd(robot_data$jmag)
+min_jmag <- min(robot_data$jmag, na.rm = TRUE)
+max_jmag <- max(robot_data$jmag, na.rm = TRUE)
+range_jmag <- max_jmag-min_jmag
 
-#Normal distribution
-hist(robo_data$trans_y, main="Histogram of trans_y", xlab="trans_y")
+data_exploration_df <- data.frame(
+  Statistic = c("Mean", "Median", "Std Dev", "Min", "Max", "Range"),
+  AngularVelocityMag = c(avg_angularvmag, median_angularvmag, stddev_angularvmag, min_angularvmag, max_angularvmag, range_angularvmag),
+  JerkMag = c(avg_jmag, median_jmag, stddev_jmag, min_jmag, max_jmag, range_jmag)
+)
 
-#Right-skewed distribution
-hist(robo_data$trans_z, main="Histogram of trans_z", xlab="trans_z")
+plot(robot_data$angular_v_mag, robot_data$jmag, xlab = "Angular Velocity Magnitude", ylab = "Jerk Magnitude")
+plot(robot_data$angular_v_mag, robot_data$jmag, xlab = "Angular Velocity Magnitude", ylab = "Jerk Magnitude", log='xy')
 
-#Normal distribution
-hist(robo_data$roll, main="Histogram of roll", xlab="roll")
+model <- lm((robot_data$jmag) ~ robot_data$angular_v_mag + robot_data$Environment + (robot_data$angular_v_mag * robot_data$Environment))
+summary(model)
+anova(model)
 
-#Normal distribution
-hist(robo_data$pitch, main="Histogram of pitch", xlab="pitch")
-
-#Multimodal distribution
-hist(robo_data$yaw, main="Histogram of yaw", xlab="yaw")
-
-#Histograms provide an interesting way to describe quantitative data.
-#Histograms can partition data into different intervals for analysis.
-
-#Strong linear relationship
-plot(robo_data$trans_x, robo_data$trans_y, xlab="trans_x", ylab="trans_y")
-x_model <- lm(robo_data$trans_y ~ robo_data$trans_x)
-
-#Moderate linear relationship
-plot(robo_data$trans_z, robo_data$trans_y, xlab="trans_z", ylab="trans_y")
-z_model <- lm(robo_data$trans_y ~ robo_data$trans_z)
-
-#Very weak linear relationship
-plot(robo_data$roll, robo_data$trans_y, xlab="roll", ylab="trans_y")
-roll_model <- lm(robo_data$trans_y ~ robo_data$roll)
-
-#Not linear at all
-plot(robo_data$pitch, robo_data$trans_y, xlab="pitch", ylab="trans_y")
-pitch_model <- lm(robo_data$trans_y ~ robo_data$pitch)
-
-#Not linear at all
-plot(robo_data$yaw, robo_data$trans_y, xlab="yaw", ylab="trans_y")
-yaw_model <- lm(robo_data$trans_y ~ robo_data$yaw)
-
-#Existence? Yes.
-#Independence? Yes.
-#Linearity? Only for trans_x
-#Homoscedasticity? No.
-#Normal? No.
-
-#Based on the analysis, the best relationships are:
-#trans_y = Btrans_x+E
-#trans_y = Btrans_z+E
-#trans_y = Broll+E
-
-print(cor(robo_data$trans_x, robo_data$trans_y))
-print(cor(robo_data$trans_z, robo_data$trans_y))
-print(cor(robo_data$roll, robo_data$trans_y))
-print(cor(robo_data$pitch, robo_data$trans_y))
-print(cor(robo_data$yaw, robo_data$trans_y))
-
-
-
-
-
+plot(model$fitted.values, residuals(model), xlab = "Predicted Values", ylab = "Residuals",)
+Residuals <- residuals(model)
+hist(Residuals, breaks = 30, xlab = "Residuals")
