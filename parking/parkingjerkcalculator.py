@@ -24,16 +24,12 @@ j_x = np.diff(a_x) / dt
 j_y = np.diff(a_y) / dt
 j_z = np.diff(a_z) / dt
 
-angular_roll = np.diff(parking_data['roll']) / dt
-angular_pitch = np.diff(parking_data['pitch']) / dt
-angular_yaw = np.diff(parking_data['yaw']) / dt
-
 # Compute a 3D vector for angular magnitude, create a new DataFrame to store the angular magnitude, then save angular magnitude to a new CSV
-angular_v_mag = np.sqrt(np.square(angular_roll[2:]) + np.square(angular_pitch[2:]) + np.square(angular_yaw[2:])) # Eliminate three entries for alignment
-angular_vmag_data = pd.DataFrame({'angular_v_mag': angular_v_mag})
-angular_vmag_data['Environment'] = 'Parking Lot'
-angular_vmag_data.to_csv('parking/parking_angular_vmag_data.csv', index=False)
-print(angular_vmag_data.head())
+angular_mag = np.sqrt(np.square(parking_data['roll'][3:]) + np.square(parking_data['pitch'][3:]) + np.square(parking_data['yaw'][3:])) # Eliminate three entries for alignment
+angular_mag_data = pd.DataFrame({'angular_mag': angular_mag})
+angular_mag_data['Environment'] = 'Parking Lot'
+angular_mag_data.to_csv('parking/parking_angular_mag_data.csv', index=False)
+print(angular_mag_data.head())
 
 # Compute a 3D vector for jerk magnitude, create a new DataFrame to store the jerk magnitude, then save jerk magnitude to a new CSV
 jmag = np.sqrt(np.square(j_x) + np.square(j_y) + np.square(j_z))
