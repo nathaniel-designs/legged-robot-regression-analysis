@@ -8,12 +8,12 @@ robot_data <- read_csv("robot_dataset.csv")
 head(robot_data, 10)
 summary(robot_data)
 
-avg_angularvmag <- mean(robot_data$angular_v_mag)
-median_angularvmag <- median(robot_data$angular_v_mag)
-stddev_angularvmag <- sd(robot_data$angular_v_mag)
-min_angularvmag <- min(robot_data$angular_v_mag, na.rm = TRUE)
-max_angularvmag <- max(robot_data$angular_v_mag, na.rm = TRUE)
-range_angularvmag <- max_angularvmag-min_angularvmag
+avg_angularmag <- mean(robot_data$angular_mag)
+median_angularmag <- median(robot_data$angular_mag)
+stddev_angularmag <- sd(robot_data$angular_mag)
+min_angularmag <- min(robot_data$angular_mag, na.rm = TRUE)
+max_angularmag <- max(robot_data$angular_mag, na.rm = TRUE)
+range_angularmag <- max_angularmag-min_angularmag
 
 avg_jmag <- mean(robot_data$jmag)
 median_jmag <- median(robot_data$jmag)
@@ -24,14 +24,14 @@ range_jmag <- max_jmag-min_jmag
 
 data_exploration_df <- data.frame(
   Statistic = c("Mean", "Median", "Std Dev", "Min", "Max", "Range"),
-  AngularVelocityMag = c(avg_angularvmag, median_angularvmag, stddev_angularvmag, min_angularvmag, max_angularvmag, range_angularvmag),
+  AngularMag = c(avg_angularmag, median_angularmag, stddev_angularmag, min_angularmag, max_angularmag, range_angularmag),
   JerkMag = c(avg_jmag, median_jmag, stddev_jmag, min_jmag, max_jmag, range_jmag)
 )
 
-plot(robot_data$angular_v_mag, robot_data$jmag, xlab = "Angular Velocity Magnitude", ylab = "Jerk Magnitude")
-plot(robot_data$angular_v_mag, robot_data$jmag, xlab = "Angular Velocity Magnitude", ylab = "Jerk Magnitude", log='xy')
+plot(robot_data$angular_mag, robot_data$jmag, xlab = "Angular Magnitude", ylab = "Jerk Magnitude")
+plot(robot_data$angular_mag, robot_data$jmag, xlab = "Angular Magnitude", ylab = "Jerk Magnitude", log='xy')
 
-model <- lm((robot_data$jmag) ~ robot_data$angular_v_mag + robot_data$Environment + (robot_data$angular_v_mag * robot_data$Environment))
+model <- lm((robot_data$jmag) ~ robot_data$angular_mag + robot_data$Environment + (robot_data$angular_mag * robot_data$Environment))
 summary(model)
 anova(model)
 
