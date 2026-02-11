@@ -1,39 +1,69 @@
 import pandas as pd
 import numpy as np
+from pynumdiff.optimize import optimize
+from pynumdiff.polynomial_fit import savgoldiff
 
-# Load original CSV
-running_data = pd.read_csv('running/gt_0705_running_00.csv')
+def main():
+    # Load original CSV
+    running_data = pd.read_csv('running/gt_0705_running_00.csv')
 
-print(running_data.head())
+    print(running_data.head())
 
-# Time step
-dt = 0.1  
+    # Time step
+    dt = 0.1  
 
-# Calculate velocity components (derivative of position)
-v_x = np.diff(running_data['trans_x']) / dt
-v_y = np.diff(running_data['trans_y']) / dt
-v_z = np.diff(running_data['trans_z']) / dt
+    # Calculate velocity components (derivative of position)
+    params_vx, _ = optimize(savgoldiff, running_data['trans_x'].to_numpy().astype(float), dt)
+    _, dxdt_hat = savgoldiff(running_data['trans_x'].to_numpy().astype(float), dt, **params_vx)
 
-# Calculate acceleration components (derivative of velocity)
-a_x = np.diff(v_x) / dt
-a_y = np.diff(v_y) / dt
-a_z = np.diff(v_z) / dt
+    params_vy, _ = optimize(savgoldiff, running_data['trans_y'].to_numpy().astype(float), dt)
+    _, dydt_hat = savgoldiff(running_data['trans_y'].to_numpy().astype(float), dt, **params_vy)
 
-# Calculate compute jerk components (derivative of acceleration)
-j_x = np.diff(a_x) / dt
-j_y = np.diff(a_y) / dt
-j_z = np.diff(a_z) / dt
+    params_vz, _ = optimize(savgoldiff, running_data['trans_z'].to_numpy().astype(float), dt)
+    _, dzdt_hat = savgoldiff(running_data['trans_z'].to_numpy().astype(float), dt, **params_vz)
 
-# Compute a 3D vector for angular magnitude, create a new DataFrame to store the angular magnitude, then save angular magnitude to a new CSV
-angular_mag = np.sqrt(np.square(running_data['roll'][3:]) + np.square(running_data['pitch'][3:]) + np.square(running_data['yaw'][3:])) # Eliminate three entries for alignment
-angular_mag_data = pd.DataFrame({'angular_mag': angular_mag})
-angular_mag_data['Environment'] = 'Running'
-angular_mag_data.to_csv('running/running_angular_mag_data.csv', index=False)
-print(angular_mag_data.head())
+    # Calculate acceleration components (derivative of velocity)
+    params_ax, _ = optimize(savgoldiff, dxdt_hat, dt)
+    _, ax_hat = savgoldiff(dxdt_hat, dt, **params_ax)
 
-# Compute a 3D vector for jerk magnitude, create a new DataFrame to store the jerk magnitude, then save jerk magnitude to a new CSV
-jmag = np.sqrt(np.square(j_x) + np.square(j_y) + np.square(j_z))
-jmag_data = pd.DataFrame({'jmag': jmag})
-jmag_data['Environment'] = 'Running'
-jmag_data.to_csv('running/running_jmag_data.csv', index=False)
-print(jmag_data.head())
+    params_ay, _ = optimize(savgoldiff, dydt_hat, dt)
+    _, ay_hat = savgoldiff(dydt_hat, dt, **params_ay)
+
+    params_az, _ = optimize(savgoldiff, dzdt_hat, dt)
+    _, az_hat = savgoldiff(dzdt_hat, dt, **params_az)
+
+    # Calculate compute jerk components (derivative of acceleration)
+    params_jx, _ = optimize(savgoldiff, ax_hat, dt)
+    _, jx_hat = savgoldiff(ax_hat, dt, **params_jx)
+
+    params_jy, _ = optimize(savgoldiff, ay_hat, dt)
+    _, jy_hat = savgoldiff(ay_hat, dt, **params_jy)
+
+    params_jz, _ = optimize(savgoldiff, az_hat, dt)
+    _, jz_hat = savgoldiff(az_hat, dt, **params_jz)
+
+    params_roll, val_roll = optimize(savgoldiff, running_data['roll'].to_numpy().astype(float), dt)
+    roll_hat, drolldt_hat = savgoldiff(running_data['roll'].to_numpy().astype(float), dt, **params_roll)
+
+    params_pitch, val_pitch = optimize(savgoldiff, running_data['pitch'].to_numpy().astype(float), dt)
+    pitch_hat, dpitchdt_hat = savgoldiff(running_data['pitch'].to_numpy().astype(float), dt, **params_pitch)
+
+    params_yaw, val_yaw = optimize(savgoldiff, running_data['yaw'].to_numpy().astype(float), dt)
+    yaw_hat, dyawdt_hat = savgoldiff(running_data['yaw'].to_numpy().astype(float), dt, **params_yaw)
+
+    # Compute a 3D vector for angular magnitude, create a new DataFrame to store the angular magnitude, then save angular magnitude to a new CSV
+    angular_vel_mag = np.sqrt(np.square(drolldt_hat) + np.square(dpitchdt_hat) + np.square(dyawdt_hat)) # Eliminate three entries for alignment
+    angular_vel_mag_data = pd.DataFrame({'angular_vel_mag': angular_vel_mag})
+    angular_vel_mag_data['Environment'] = 'Running'
+    angular_vel_mag_data.to_csv('running/running_angular_vel_mag_data.csv', index=False)
+    print(angular_vel_mag_data.head())
+
+    # Compute a 3D vector for jerk magnitude, create a new DataFrame to store the jerk magnitude, then save jerk magnitude to a new CSV
+    jmag = np.sqrt(np.square(jx_hat) + np.square(jy_hat) + np.square(jz_hat))
+    jmag_data = pd.DataFrame({'jmag': jmag})
+    jmag_data['Environment'] = 'Running'
+    jmag_data.to_csv('running/running_jmag_data.csv', index=False)
+    print(jmag_data.head())
+
+if __name__ == "__main__":
+    main()
