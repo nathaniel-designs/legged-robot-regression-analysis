@@ -12,3 +12,4 @@
 .Rhistory
 >>>>>>> HEAD@{1}
 .DS_Store
+bags/*.bag
