@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from pynumdiff.optimize import optimize
 from pynumdiff.polynomial_fit import savgoldiff
-import rosbag_pandas as rspd
+from scipy.interpolate import interp1d
 
 FR_HIP_XX = 0.000334008405
 FR_HIP_YY = 0.000619101213
@@ -55,12 +55,35 @@ RL_CALF_ZZ = 0.000024787446
 def main():
     # Load original CSV
     corridor_data = pd.read_csv('corridor/gt_0517_corridor_00.csv')
+    footforce_data = pd.read_csv('corridor/corridor_footforce_00.csv')
+    
+    # Seperate foot force into the 4 feet.
+    footforce_data["sensor"] = footforce_data.groupby("elapsed time").cumcount()
+    
+    footforce_pivot = footforce_data.pivot_table(index="elapsed time", columns="sensor", values="value")
+    
+    footforce_pivot.columns = ["Foot 1", "Foot 2", "Foot 3", "Foot 4"]
+    footforce_pivot = footforce_pivot.reset_index()
+    
+    force_cols = ["Foot 1", "Foot 2", "Foot 3", "Foot 4"]
+    
+    footforce_pivot['FMAG'] = np.linalg.norm(footforce_pivot[force_cols].to_numpy(), axis=1)
+    
+    footforce_pivot = footforce_pivot.sort_values("elapsed time")
+    footforce_pivot = footforce_pivot.drop_duplicates("elapsed time")
 
-    print(corridor_data.head())
-
-    # Time step
-    dt = 0.1  
-
+    # Time step 
+    t_ref = corridor_data['time'].to_numpy()
+    t_init = footforce_pivot['elapsed time'].to_numpy()
+    footforces = footforce_pivot['FMAG'].to_numpy()
+    dt = np.mean(np.diff(t_ref))
+    
+    # Shift to start at 0
+    t_ref_elapsed = t_ref - t_ref[0]
+    
+    interpolation_func = interp1d(t_init, footforces, kind='linear', fill_value='extrapolate')
+    f_aligned = interpolation_func(t_ref_elapsed)
+    
     params_roll, _ = optimize(savgoldiff, corridor_data['roll'].to_numpy().astype(float), dt)
     _, drolldt_hat = savgoldiff(corridor_data['roll'].to_numpy().astype(float), dt, **params_roll)
 
@@ -143,23 +166,35 @@ def main():
     df_torque_mags['T_FR_CALF'] = np.sqrt(np.square(df_torque['T_FR_CALF_XX']) + np.square(df_torque['T_FR_CALF_YY']) + np.square(df_torque['T_FR_CALF_ZZ']))
 
     df_torque_mags['T_FL_HIP'] = np.sqrt(np.square(df_torque['T_FL_HIP_XX']) + np.square(df_torque['T_FL_HIP_YY']) + np.square(df_torque['T_FL_HIP_ZZ']))
-    df_torque_mags['T_FL_THIGH'] = np.sqrt(np.square(df_torque['T_FL_THIGH_XX']) + np.square(df_torque['T_FL_THIGH_YY']) + np.square(df_torque['T_FL_HIP_ZZ']))
+    df_torque_mags['T_FL_THIGH'] = np.sqrt(np.square(df_torque['T_FL_THIGH_XX']) + np.square(df_torque['T_FL_THIGH_YY']) + np.square(df_torque['T_FL_THIGH_ZZ']))
     df_torque_mags['T_FL_CALF'] = np.sqrt(np.square(df_torque['T_FL_CALF_XX']) + np.square(df_torque['T_FL_CALF_YY']) + np.square(df_torque['T_FL_CALF_ZZ']))
     
     df_torque_mags['T_RR_HIP'] = np.sqrt(np.square(df_torque['T_RR_HIP_XX']) + np.square(df_torque['T_RR_HIP_YY']) + np.square(df_torque['T_RR_HIP_ZZ']))
-    df_torque_mags['T_RR_THIGH'] = np.sqrt(np.square(df_torque['T_RR_THIGH_XX']) + np.square(df_torque['T_RR_THIGH_YY']) + np.square(df_torque['T_RR_HIP_ZZ']))
+    df_torque_mags['T_RR_THIGH'] = np.sqrt(np.square(df_torque['T_RR_THIGH_XX']) + np.square(df_torque['T_RR_THIGH_YY']) + np.square(df_torque['T_RR_THIGH_ZZ']))
     df_torque_mags['T_RR_CALF'] = np.sqrt(np.square(df_torque['T_RR_CALF_XX']) + np.square(df_torque['T_RR_CALF_YY']) + np.square(df_torque['T_RR_CALF_ZZ']))
     
     df_torque_mags['T_RL_HIP'] = np.sqrt(np.square(df_torque['T_RL_HIP_XX']) + np.square(df_torque['T_RL_HIP_YY']) + np.square(df_torque['T_RL_HIP_ZZ']))
-    df_torque_mags['T_RL_THIGH'] = np.sqrt(np.square(df_torque['T_RL_THIGH_XX']) + np.square(df_torque['T_RL_THIGH_YY']) + np.square(df_torque['T_RL_HIP_ZZ']))
+    df_torque_mags['T_RL_THIGH'] = np.sqrt(np.square(df_torque['T_RL_THIGH_XX']) + np.square(df_torque['T_RL_THIGH_YY']) + np.square(df_torque['T_RL_THIGH_ZZ']))
     df_torque_mags['T_RL_CALF'] = np.sqrt(np.square(df_torque['T_RL_CALF_XX']) + np.square(df_torque['T_RL_CALF_YY']) + np.square(df_torque['T_RL_CALF_ZZ']))
     
     df_torque_mags['Environment'] = 'Corridor'
     df_torque_mags.to_csv('corridor/corridor_tmag_data.csv', index=False)
     df_torque_mags.head()
     
-    corridor_bag = rspd.bag_to_dataframe('bags/corridor.bag') 
-    corridor_bag.head()
-
+    params_footforce, _ = optimize(savgoldiff, f_aligned.astype(float), dt)
+    _, dfootforcedt_hat = savgoldiff(f_aligned.astype(float), dt, **params_footforce)
+    
+    dfootforcedt_hat_data = pd.DataFrame({'d_footforce_dt': dfootforcedt_hat})
+    dfootforcedt_hat_data['Environment'] = 'Corridor'
+    dfootforcedt_hat_data.to_csv('corridor/corridor_dfootforce_dt_data.csv', index=False)
+    print(dfootforcedt_hat_data.head())
+    
+    df_footforce = pd.DataFrame({
+        "time": t_ref,        
+        "f_aligned": f_aligned
+    })
+    df_footforce.to_csv('corridor/corridor_footforce_data.csv', index=False)
+    print(df_footforce.head())
+    
 if __name__ == "__main__":
     main()
