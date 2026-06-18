@@ -189,12 +189,20 @@ def main():
     dfootforcedt_hat_data.to_csv('corridor/corridor_dfootforce_dt_data.csv', index=False)
     print(dfootforcedt_hat_data.head())
     
-    df_footforce = pd.DataFrame({
-        "time": t_ref,        
-        "f_aligned": f_aligned
+    df_torque_mags['total_torque'] = df_torque_mags.drop(
+        columns=['Environment']
+    ).sum(axis=1)
+    
+    df_model = pd.DataFrame({
+        "time": t_ref, 
+        "total_torque": df_torque_mags['total_torque'],
+        "footforce": f_aligned,
+        "d_footforce_dt": dfootforcedt_hat,
+        "environment": "Corridor"
     })
-    df_footforce.to_csv('corridor/corridor_footforce_data.csv', index=False)
-    print(df_footforce.head())
+    
+    df_model.to_csv('corridor/corridor_model_data.csv', index=False)
+    print(df_model.head())
     
 if __name__ == "__main__":
     main()
