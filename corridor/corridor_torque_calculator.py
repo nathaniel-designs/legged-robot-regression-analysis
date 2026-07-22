@@ -52,6 +52,218 @@ RL_CALF_XX = 0.001088793059
 RL_CALF_YY = 0.001100428748
 RL_CALF_ZZ = 0.000024787446
 
+def rotational_components(corridor_data, dt):
+    params_roll, _ = optimize(savgoldiff, corridor_data['roll'].to_numpy().astype(float), dt)
+    _, drolldt_hat = savgoldiff(corridor_data['roll'].to_numpy().astype(float), dt, **params_roll)
+
+    params_pitch, _ = optimize(savgoldiff, corridor_data['pitch'].to_numpy().astype(float), dt)
+    _, dpitchdt_hat = savgoldiff(corridor_data['pitch'].to_numpy().astype(float), dt, **params_pitch)
+
+    params_yaw, _ = optimize(savgoldiff, corridor_data['yaw'].to_numpy().astype(float), dt)
+    _, dyawdt_hat = savgoldiff(corridor_data['yaw'].to_numpy().astype(float), dt, **params_yaw)
+    
+    
+    # Calculate acceleration components (derivative of velocity)
+    params_aroll, _ = optimize(savgoldiff, drolldt_hat, dt)
+    _, aroll_hat = savgoldiff(drolldt_hat, dt, **params_aroll)
+    
+    params_apitch, _ = optimize(savgoldiff, dpitchdt_hat, dt)
+    _, apitch_hat = savgoldiff(dpitchdt_hat, dt, **params_apitch)
+    
+    params_ayaw, _ = optimize(savgoldiff, dyawdt_hat, dt)
+    _, ayaw_hat = savgoldiff(dyawdt_hat, dt, **params_ayaw)
+
+    rotation_components = pd.DataFrame({
+        'w_roll': drolldt_hat,
+        'w_pitch': dpitchdt_hat,
+        'w_yaw': dyawdt_hat,
+        'alpha_roll': aroll_hat,
+        'alpha_pitch': apitch_hat,
+        'alpha_yaw': ayaw_hat
+    })
+    
+    return rotation_components
+
+def newton_torque_components(rotation_components):
+    df_newton_torque = pd.DataFrame()
+    
+    df_newton_torque['T_FR_HIP_XX'] = FR_HIP_XX * rotation_components['alpha_roll']
+    df_newton_torque['T_FR_HIP_YY'] = FR_HIP_YY * rotation_components['alpha_pitch']
+    df_newton_torque['T_FR_HIP_ZZ'] = FR_HIP_ZZ * rotation_components['alpha_yaw']
+    
+    df_newton_torque['T_FR_THIGH_XX'] = FR_THIGH_XX * rotation_components['alpha_roll']
+    df_newton_torque['T_FR_THIGH_YY'] = FR_THIGH_YY * rotation_components['alpha_pitch']
+    df_newton_torque['T_FR_THIGH_ZZ'] = FR_THIGH_ZZ * rotation_components['alpha_yaw']
+    
+    df_newton_torque['T_FR_CALF_XX'] = FR_CALF_XX * rotation_components['alpha_roll']
+    df_newton_torque['T_FR_CALF_YY'] = FR_CALF_YY * rotation_components['alpha_pitch']
+    df_newton_torque['T_FR_CALF_ZZ'] = FR_CALF_ZZ * rotation_components['alpha_yaw']
+    
+    df_newton_torque['T_FL_HIP_XX'] = FL_HIP_XX * rotation_components['alpha_roll']
+    df_newton_torque['T_FL_HIP_YY'] = FL_HIP_YY * rotation_components['alpha_pitch']
+    df_newton_torque['T_FL_HIP_ZZ'] = FL_HIP_ZZ * rotation_components['alpha_yaw']
+    
+    df_newton_torque['T_FL_THIGH_XX'] = FL_THIGH_XX * rotation_components['alpha_roll']
+    df_newton_torque['T_FL_THIGH_YY'] = FL_THIGH_YY * rotation_components['alpha_pitch']
+    df_newton_torque['T_FL_THIGH_ZZ'] = FL_THIGH_ZZ * rotation_components['alpha_yaw']
+    
+    df_newton_torque['T_FL_CALF_XX'] = FL_CALF_XX * rotation_components['alpha_roll']
+    df_newton_torque['T_FL_CALF_YY'] = FL_CALF_YY * rotation_components['alpha_pitch']
+    df_newton_torque['T_FL_CALF_ZZ'] = FL_CALF_ZZ * rotation_components['alpha_yaw']
+    
+    df_newton_torque['T_RR_HIP_XX'] = RR_HIP_XX * rotation_components['alpha_roll']
+    df_newton_torque['T_RR_HIP_YY'] = RR_HIP_YY * rotation_components['alpha_pitch']
+    df_newton_torque['T_RR_HIP_ZZ'] = RR_HIP_ZZ * rotation_components['alpha_yaw']
+    
+    df_newton_torque['T_RR_THIGH_XX'] = RR_THIGH_XX * rotation_components['alpha_roll']
+    df_newton_torque['T_RR_THIGH_YY'] = RR_THIGH_YY * rotation_components['alpha_pitch']
+    df_newton_torque['T_RR_THIGH_ZZ'] = RR_THIGH_ZZ * rotation_components['alpha_yaw']
+    
+    df_newton_torque['T_RR_CALF_XX'] = RR_CALF_XX * rotation_components['alpha_roll']
+    df_newton_torque['T_RR_CALF_YY'] = RR_CALF_YY * rotation_components['alpha_pitch']
+    df_newton_torque['T_RR_CALF_ZZ'] = RR_CALF_ZZ * rotation_components['alpha_yaw']
+    
+    df_newton_torque['T_RL_HIP_XX'] = RL_HIP_XX * rotation_components['alpha_roll']
+    df_newton_torque['T_RL_HIP_YY'] = RL_HIP_YY * rotation_components['alpha_pitch']
+    df_newton_torque['T_RL_HIP_ZZ'] = RL_HIP_ZZ * rotation_components['alpha_yaw']
+    
+    df_newton_torque['T_RL_THIGH_XX'] = RL_THIGH_XX * rotation_components['alpha_roll']
+    df_newton_torque['T_RL_THIGH_YY'] = RL_THIGH_YY * rotation_components['alpha_pitch']
+    df_newton_torque['T_RL_THIGH_ZZ'] = RL_THIGH_ZZ * rotation_components['alpha_yaw']
+    
+    df_newton_torque['T_RL_CALF_XX'] = RL_CALF_XX * rotation_components['alpha_roll']
+    df_newton_torque['T_RL_CALF_YY'] = RL_CALF_YY * rotation_components['alpha_pitch']
+    df_newton_torque['T_RL_CALF_ZZ'] = RL_CALF_ZZ * rotation_components['alpha_yaw']
+    
+    df_torque_mags = pd.DataFrame()
+    df_torque_mags['T_FR_HIP'] = np.sqrt(np.square(df_newton_torque['T_FR_HIP_XX']) + np.square(df_newton_torque['T_FR_HIP_YY']) + np.square(df_newton_torque['T_FR_HIP_ZZ']))
+    df_torque_mags['T_FR_THIGH'] = np.sqrt(np.square(df_newton_torque['T_FR_THIGH_XX']) + np.square(df_newton_torque['T_FR_THIGH_YY']) + np.square(df_newton_torque['T_FR_THIGH_ZZ']))
+    df_torque_mags['T_FR_CALF'] = np.sqrt(np.square(df_newton_torque['T_FR_CALF_XX']) + np.square(df_newton_torque['T_FR_CALF_YY']) + np.square(df_newton_torque['T_FR_CALF_ZZ']))
+
+    df_torque_mags['T_FL_HIP'] = np.sqrt(np.square(df_newton_torque['T_FL_HIP_XX']) + np.square(df_newton_torque['T_FL_HIP_YY']) + np.square(df_newton_torque['T_FL_HIP_ZZ']))
+    df_torque_mags['T_FL_THIGH'] = np.sqrt(np.square(df_newton_torque['T_FL_THIGH_XX']) + np.square(df_newton_torque['T_FL_THIGH_YY']) + np.square(df_newton_torque['T_FL_THIGH_ZZ']))
+    df_torque_mags['T_FL_CALF'] = np.sqrt(np.square(df_newton_torque['T_FL_CALF_XX']) + np.square(df_newton_torque['T_FL_CALF_YY']) + np.square(df_newton_torque['T_FL_CALF_ZZ']))
+    
+    df_torque_mags['T_RR_HIP'] = np.sqrt(np.square(df_newton_torque['T_RR_HIP_XX']) + np.square(df_newton_torque['T_RR_HIP_YY']) + np.square(df_newton_torque['T_RR_HIP_ZZ']))
+    df_torque_mags['T_RR_THIGH'] = np.sqrt(np.square(df_newton_torque['T_RR_THIGH_XX']) + np.square(df_newton_torque['T_RR_THIGH_YY']) + np.square(df_newton_torque['T_RR_THIGH_ZZ']))
+    df_torque_mags['T_RR_CALF'] = np.sqrt(np.square(df_newton_torque['T_RR_CALF_XX']) + np.square(df_newton_torque['T_RR_CALF_YY']) + np.square(df_newton_torque['T_RR_CALF_ZZ']))
+    
+    df_torque_mags['T_RL_HIP'] = np.sqrt(np.square(df_newton_torque['T_RL_HIP_XX']) + np.square(df_newton_torque['T_RL_HIP_YY']) + np.square(df_newton_torque['T_RL_HIP_ZZ']))
+    df_torque_mags['T_RL_THIGH'] = np.sqrt(np.square(df_newton_torque['T_RL_THIGH_XX']) + np.square(df_newton_torque['T_RL_THIGH_YY']) + np.square(df_newton_torque['T_RL_THIGH_ZZ']))
+    df_torque_mags['T_RL_CALF'] = np.sqrt(np.square(df_newton_torque['T_RL_CALF_XX']) + np.square(df_newton_torque['T_RL_CALF_YY']) + np.square(df_newton_torque['T_RL_CALF_ZZ']))
+    
+    df_torque_mags['Environment'] = 'Corridor'
+    df_torque_mags.to_csv('corridor/corridor_newton_tmag_data.csv', index=False)
+    df_torque_mags.head()
+    
+    return df_torque_mags
+
+def newton_model(corridor_data, dt, t_ref, f_aligned, dfootforcedt_hat):
+    df_torque_mags = newton_torque_components(rotational_components(corridor_data, dt)).copy()
+        
+    df_torque_mags['total_torque'] = df_torque_mags.drop(columns=['Environment']).sum(axis=1)
+        
+    df_model = pd.DataFrame({
+        "time": t_ref, 
+        "total_torque": df_torque_mags['total_torque'],
+        "footforce": f_aligned,
+        "d_footforce_dt": dfootforcedt_hat,
+        "environment": "Corridor"
+    })
+        
+    df_model.to_csv('corridor/corridor_newton_model_data.csv', index=False)
+    print(df_model.head())
+    
+def euler_torque_components(rotation_components):
+    df_euler_torque = pd.DataFrame()
+    
+    df_euler_torque['T_FR_HIP_XX'] = (FR_HIP_XX * rotation_components['alpha_roll']) + ((FR_HIP_ZZ - FR_HIP_YY) * rotation_components['w_pitch'] * rotation_components['w_yaw'])
+    df_euler_torque['T_FR_HIP_YY'] = (FR_HIP_YY * rotation_components['alpha_pitch']) + ((FR_HIP_XX - FR_HIP_ZZ) * rotation_components['w_roll'] * rotation_components['w_yaw'])
+    df_euler_torque['T_FR_HIP_ZZ'] = (FR_HIP_ZZ * rotation_components['alpha_yaw']) + ((FR_HIP_YY - FR_HIP_XX) * rotation_components['w_roll'] * rotation_components['w_pitch'])
+    
+    df_euler_torque['T_FR_THIGH_XX'] = (FR_THIGH_XX * rotation_components['alpha_roll']) + ((FR_THIGH_ZZ - FR_THIGH_YY) * rotation_components['w_pitch'] * rotation_components['w_yaw'])
+    df_euler_torque['T_FR_THIGH_YY'] = (FR_THIGH_YY * rotation_components['alpha_pitch']) + ((FR_THIGH_XX - FR_THIGH_ZZ) * rotation_components['w_roll'] * rotation_components['w_yaw'])
+    df_euler_torque['T_FR_THIGH_ZZ'] = (FR_THIGH_ZZ * rotation_components['alpha_yaw']) + ((FR_THIGH_YY - FR_THIGH_XX) * rotation_components['w_roll'] * rotation_components['w_pitch'])
+    
+    df_euler_torque['T_FR_CALF_XX'] = (FR_CALF_XX * rotation_components['alpha_roll']) + ((FR_CALF_ZZ - FR_CALF_YY) * rotation_components['w_pitch'] * rotation_components['w_yaw'])
+    df_euler_torque['T_FR_CALF_YY'] = (FR_CALF_YY * rotation_components['alpha_pitch']) + ((FR_CALF_XX - FR_CALF_ZZ) * rotation_components['w_roll'] * rotation_components['w_yaw'])
+    df_euler_torque['T_FR_CALF_ZZ'] = (FR_CALF_ZZ * rotation_components['alpha_yaw']) + ((FR_CALF_YY - FR_CALF_XX) * rotation_components['w_roll'] * rotation_components['w_pitch'])
+    
+    df_euler_torque['T_FL_HIP_XX'] = (FL_HIP_XX * rotation_components['alpha_roll']) + ((FL_HIP_ZZ - FL_HIP_YY) * rotation_components['w_pitch'] * rotation_components['w_yaw'])
+    df_euler_torque['T_FL_HIP_YY'] = (FL_HIP_YY * rotation_components['alpha_pitch']) + ((FL_HIP_XX - FL_HIP_ZZ) * rotation_components['w_roll'] * rotation_components['w_yaw'])
+    df_euler_torque['T_FL_HIP_ZZ'] = (FL_HIP_ZZ * rotation_components['alpha_yaw']) + ((FL_HIP_YY - FL_HIP_XX) * rotation_components['w_roll'] * rotation_components['w_pitch'])
+        
+    df_euler_torque['T_FL_THIGH_XX'] = (FL_THIGH_XX * rotation_components['alpha_roll']) + ((FL_THIGH_ZZ - FL_THIGH_YY) * rotation_components['w_pitch'] * rotation_components['w_yaw'])
+    df_euler_torque['T_FL_THIGH_YY'] = (FL_THIGH_YY * rotation_components['alpha_pitch']) + ((FL_THIGH_XX - FL_THIGH_ZZ) * rotation_components['w_roll'] * rotation_components['w_yaw'])
+    df_euler_torque['T_FL_THIGH_ZZ'] = (FL_THIGH_ZZ * rotation_components['alpha_yaw']) + ((FL_THIGH_YY - FL_THIGH_XX) * rotation_components['w_roll'] * rotation_components['w_pitch'])
+        
+    df_euler_torque['T_FL_CALF_XX'] = (FL_CALF_XX * rotation_components['alpha_roll']) + ((FL_CALF_ZZ - FL_CALF_YY) * rotation_components['w_pitch'] * rotation_components['w_yaw'])
+    df_euler_torque['T_FL_CALF_YY'] = (FL_CALF_YY * rotation_components['alpha_pitch']) + ((FL_CALF_XX - FL_CALF_ZZ) * rotation_components['w_roll'] * rotation_components['w_yaw'])
+    df_euler_torque['T_FL_CALF_ZZ'] = (FL_CALF_ZZ * rotation_components['alpha_yaw']) + ((FL_CALF_YY - FL_CALF_XX) * rotation_components['w_roll'] * rotation_components['w_pitch'])
+    
+    df_euler_torque['T_RR_HIP_XX'] = (RR_HIP_XX * rotation_components['alpha_roll']) + ((RR_HIP_ZZ - RR_HIP_YY) * rotation_components['w_pitch'] * rotation_components['w_yaw'])
+    df_euler_torque['T_RR_HIP_YY'] = (RR_HIP_YY * rotation_components['alpha_pitch']) + ((RR_HIP_XX - RR_HIP_ZZ) * rotation_components['w_roll'] * rotation_components['w_yaw'])
+    df_euler_torque['T_RR_HIP_ZZ'] = (RR_HIP_ZZ * rotation_components['alpha_yaw']) + ((RR_HIP_YY - RR_HIP_XX) * rotation_components['w_roll'] * rotation_components['w_pitch'])
+        
+    df_euler_torque['T_RR_THIGH_XX'] = (RR_THIGH_XX * rotation_components['alpha_roll']) + ((RR_THIGH_ZZ - RR_THIGH_YY) * rotation_components['w_pitch'] * rotation_components['w_yaw'])
+    df_euler_torque['T_RR_THIGH_YY'] = (RR_THIGH_YY * rotation_components['alpha_pitch']) + ((RR_THIGH_XX - RR_THIGH_ZZ) * rotation_components['w_roll'] * rotation_components['w_yaw'])
+    df_euler_torque['T_RR_THIGH_ZZ'] = (RR_THIGH_ZZ * rotation_components['alpha_yaw']) + ((RR_THIGH_YY - RR_THIGH_XX) * rotation_components['w_roll'] * rotation_components['w_pitch'])
+        
+    df_euler_torque['T_RR_CALF_XX'] = (RR_CALF_XX * rotation_components['alpha_roll']) + ((RR_CALF_ZZ - RR_CALF_YY) * rotation_components['w_pitch'] * rotation_components['w_yaw'])
+    df_euler_torque['T_RR_CALF_YY'] = (RR_CALF_YY * rotation_components['alpha_pitch']) + ((RR_CALF_XX - RR_CALF_ZZ) * rotation_components['w_roll'] * rotation_components['w_yaw'])
+    df_euler_torque['T_RR_CALF_ZZ'] = (RR_CALF_ZZ * rotation_components['alpha_yaw']) + ((RR_CALF_YY - RR_CALF_XX) * rotation_components['w_roll'] * rotation_components['w_pitch'])
+    
+    df_euler_torque['T_RL_HIP_XX'] = (RL_HIP_XX * rotation_components['alpha_roll']) + ((RL_HIP_ZZ - RL_HIP_YY) * rotation_components['w_pitch'] * rotation_components['w_yaw'])
+    df_euler_torque['T_RL_HIP_YY'] = (RL_HIP_YY * rotation_components['alpha_pitch']) + ((RL_HIP_XX - RL_HIP_ZZ) * rotation_components['w_roll'] * rotation_components['w_yaw'])
+    df_euler_torque['T_RL_HIP_ZZ'] = (RL_HIP_ZZ * rotation_components['alpha_yaw']) + ((RL_HIP_YY - RL_HIP_XX) * rotation_components['w_roll'] * rotation_components['w_pitch'])
+        
+    df_euler_torque['T_RL_THIGH_XX'] = (RL_THIGH_XX * rotation_components['alpha_roll']) + ((RL_THIGH_ZZ - RL_THIGH_YY) * rotation_components['w_pitch'] * rotation_components['w_yaw'])
+    df_euler_torque['T_RL_THIGH_YY'] = (RL_THIGH_YY * rotation_components['alpha_pitch']) + ((RL_THIGH_XX - RL_THIGH_ZZ) * rotation_components['w_roll'] * rotation_components['w_yaw'])
+    df_euler_torque['T_RL_THIGH_ZZ'] = (RL_THIGH_ZZ * rotation_components['alpha_yaw']) + ((RL_THIGH_YY - RL_THIGH_XX) * rotation_components['w_roll'] * rotation_components['w_pitch'])
+        
+    df_euler_torque['T_RL_CALF_XX'] = (RL_CALF_XX * rotation_components['alpha_roll']) + ((RL_CALF_ZZ - RL_CALF_YY) * rotation_components['w_pitch'] * rotation_components['w_yaw'])
+    df_euler_torque['T_RL_CALF_YY'] = (RL_CALF_YY * rotation_components['alpha_pitch']) + ((RL_CALF_XX - RL_CALF_ZZ) * rotation_components['w_roll'] * rotation_components['w_yaw'])
+    df_euler_torque['T_RL_CALF_ZZ'] = (RL_CALF_ZZ * rotation_components['alpha_yaw']) + ((RL_CALF_YY - RL_CALF_XX) * rotation_components['w_roll'] * rotation_components['w_pitch'])
+        
+    df_torque_mags = pd.DataFrame()
+    df_torque_mags['T_FR_HIP'] = np.sqrt(np.square(df_euler_torque['T_FR_HIP_XX']) + np.square(df_euler_torque['T_FR_HIP_YY']) + np.square(df_euler_torque['T_FR_HIP_ZZ']))
+    df_torque_mags['T_FR_THIGH'] = np.sqrt(np.square(df_euler_torque['T_FR_THIGH_XX']) + np.square(df_euler_torque['T_FR_THIGH_YY']) + np.square(df_euler_torque['T_FR_THIGH_ZZ']))
+    df_torque_mags['T_FR_CALF'] = np.sqrt(np.square(df_euler_torque['T_FR_CALF_XX']) + np.square(df_euler_torque['T_FR_CALF_YY']) + np.square(df_euler_torque['T_FR_CALF_ZZ']))
+
+    df_torque_mags['T_FL_HIP'] = np.sqrt(np.square(df_euler_torque['T_FL_HIP_XX']) + np.square(df_euler_torque['T_FL_HIP_YY']) + np.square(df_euler_torque['T_FL_HIP_ZZ']))
+    df_torque_mags['T_FL_THIGH'] = np.sqrt(np.square(df_euler_torque['T_FL_THIGH_XX']) + np.square(df_euler_torque['T_FL_THIGH_YY']) + np.square(df_euler_torque['T_FL_THIGH_ZZ']))
+    df_torque_mags['T_FL_CALF'] = np.sqrt(np.square(df_euler_torque['T_FL_CALF_XX']) + np.square(df_euler_torque['T_FL_CALF_YY']) + np.square(df_euler_torque['T_FL_CALF_ZZ']))
+    
+    df_torque_mags['T_RR_HIP'] = np.sqrt(np.square(df_euler_torque['T_RR_HIP_XX']) + np.square(df_euler_torque['T_RR_HIP_YY']) + np.square(df_euler_torque['T_RR_HIP_ZZ']))
+    df_torque_mags['T_RR_THIGH'] = np.sqrt(np.square(df_euler_torque['T_RR_THIGH_XX']) + np.square(df_euler_torque['T_RR_THIGH_YY']) + np.square(df_euler_torque['T_RR_THIGH_ZZ']))
+    df_torque_mags['T_RR_CALF'] = np.sqrt(np.square(df_euler_torque['T_RR_CALF_XX']) + np.square(df_euler_torque['T_RR_CALF_YY']) + np.square(df_euler_torque['T_RR_CALF_ZZ']))
+    
+    df_torque_mags['T_RL_HIP'] = np.sqrt(np.square(df_euler_torque['T_RL_HIP_XX']) + np.square(df_euler_torque['T_RL_HIP_YY']) + np.square(df_euler_torque['T_RL_HIP_ZZ']))
+    df_torque_mags['T_RL_THIGH'] = np.sqrt(np.square(df_euler_torque['T_RL_THIGH_XX']) + np.square(df_euler_torque['T_RL_THIGH_YY']) + np.square(df_euler_torque['T_RL_THIGH_ZZ']))
+    df_torque_mags['T_RL_CALF'] = np.sqrt(np.square(df_euler_torque['T_RL_CALF_XX']) + np.square(df_euler_torque['T_RL_CALF_YY']) + np.square(df_euler_torque['T_RL_CALF_ZZ']))
+    
+    df_torque_mags['Environment'] = 'Corridor'
+    df_torque_mags.to_csv('corridor/corridor_euler_tmag_data.csv', index=False)
+    df_torque_mags.head()
+    
+    return df_torque_mags
+
+def euler_model(corridor_data, dt, t_ref, f_aligned, dfootforcedt_hat):
+    df_torque_mags = euler_torque_components(rotational_components(corridor_data, dt)).copy()
+        
+    df_torque_mags['total_torque'] = df_torque_mags.drop(columns=['Environment']).sum(axis=1)
+        
+    df_model = pd.DataFrame({
+        "time": t_ref, 
+        "total_torque": df_torque_mags['total_torque'],
+        "footforce": f_aligned,
+        "d_footforce_dt": dfootforcedt_hat,
+        "environment": "Corridor"
+    })
+        
+    df_model.to_csv('corridor/corridor_euler_model_data.csv', index=False)
+    print(df_model.head())
+    
 def main():
     # Load original CSV
     corridor_data = pd.read_csv('corridor/gt_0517_corridor_00.csv')
@@ -84,103 +296,6 @@ def main():
     interpolation_func = interp1d(t_init, footforces, kind='linear', fill_value='extrapolate')
     f_aligned = interpolation_func(t_ref_elapsed)
     
-    params_roll, _ = optimize(savgoldiff, corridor_data['roll'].to_numpy().astype(float), dt)
-    _, drolldt_hat = savgoldiff(corridor_data['roll'].to_numpy().astype(float), dt, **params_roll)
-
-    params_pitch, _ = optimize(savgoldiff, corridor_data['pitch'].to_numpy().astype(float), dt)
-    _, dpitchdt_hat = savgoldiff(corridor_data['pitch'].to_numpy().astype(float), dt, **params_pitch)
-
-    params_yaw, _ = optimize(savgoldiff, corridor_data['yaw'].to_numpy().astype(float), dt)
-    _, dyawdt_hat = savgoldiff(corridor_data['yaw'].to_numpy().astype(float), dt, **params_yaw)
-    
-    
-    # Calculate acceleration components (derivative of velocity)
-    params_aroll, _ = optimize(savgoldiff, drolldt_hat, dt)
-    _, aroll_hat = savgoldiff(drolldt_hat, dt, **params_aroll)
-    
-    params_apitch, _ = optimize(savgoldiff, dpitchdt_hat, dt)
-    _, apitch_hat = savgoldiff(dpitchdt_hat, dt, **params_apitch)
-    
-    params_ayaw, _ = optimize(savgoldiff, dyawdt_hat, dt)
-    _, ayaw_hat = savgoldiff(dyawdt_hat, dt, **params_ayaw)
-
-    df_accel = pd.DataFrame({
-        'alpha_roll': aroll_hat,
-        'alpha_pitch': apitch_hat,
-        'alpha_yaw': ayaw_hat
-    })
-    
-    df_torque = pd.DataFrame()
-    
-    df_torque['T_FR_HIP_XX'] = FR_HIP_XX * df_accel['alpha_roll']
-    df_torque['T_FR_HIP_YY'] = FR_HIP_YY * df_accel['alpha_pitch']
-    df_torque['T_FR_HIP_ZZ'] = FR_HIP_ZZ * df_accel['alpha_yaw']
-    
-    df_torque['T_FR_THIGH_XX'] = FR_THIGH_XX * df_accel['alpha_roll']
-    df_torque['T_FR_THIGH_YY'] = FR_THIGH_YY * df_accel['alpha_pitch']
-    df_torque['T_FR_THIGH_ZZ'] = FR_THIGH_ZZ * df_accel['alpha_yaw']
-    
-    df_torque['T_FR_CALF_XX'] = FR_CALF_XX * df_accel['alpha_roll']
-    df_torque['T_FR_CALF_YY'] = FR_CALF_YY * df_accel['alpha_pitch']
-    df_torque['T_FR_CALF_ZZ'] = FR_CALF_ZZ * df_accel['alpha_yaw']
-    
-    df_torque['T_FL_HIP_XX'] = FL_HIP_XX * df_accel['alpha_roll']
-    df_torque['T_FL_HIP_YY'] = FL_HIP_YY * df_accel['alpha_pitch']
-    df_torque['T_FL_HIP_ZZ'] = FL_HIP_ZZ * df_accel['alpha_yaw']
-    
-    df_torque['T_FL_THIGH_XX'] = FL_THIGH_XX * df_accel['alpha_roll']
-    df_torque['T_FL_THIGH_YY'] = FL_THIGH_YY * df_accel['alpha_pitch']
-    df_torque['T_FL_THIGH_ZZ'] = FL_THIGH_ZZ * df_accel['alpha_yaw']
-    
-    df_torque['T_FL_CALF_XX'] = FL_CALF_XX * df_accel['alpha_roll']
-    df_torque['T_FL_CALF_YY'] = FL_CALF_YY * df_accel['alpha_pitch']
-    df_torque['T_FL_CALF_ZZ'] = FL_CALF_ZZ * df_accel['alpha_yaw']
-    
-    df_torque['T_RR_HIP_XX'] = RR_HIP_XX * df_accel['alpha_roll']
-    df_torque['T_RR_HIP_YY'] = RR_HIP_YY * df_accel['alpha_pitch']
-    df_torque['T_RR_HIP_ZZ'] = RR_HIP_ZZ * df_accel['alpha_yaw']
-    
-    df_torque['T_RR_THIGH_XX'] = RR_THIGH_XX * df_accel['alpha_roll']
-    df_torque['T_RR_THIGH_YY'] = RR_THIGH_YY * df_accel['alpha_pitch']
-    df_torque['T_RR_THIGH_ZZ'] = RR_THIGH_ZZ * df_accel['alpha_yaw']
-    
-    df_torque['T_RR_CALF_XX'] = RR_CALF_XX * df_accel['alpha_roll']
-    df_torque['T_RR_CALF_YY'] = RR_CALF_YY * df_accel['alpha_pitch']
-    df_torque['T_RR_CALF_ZZ'] = RR_CALF_ZZ * df_accel['alpha_yaw']
-    
-    df_torque['T_RL_HIP_XX'] = RL_HIP_XX * df_accel['alpha_roll']
-    df_torque['T_RL_HIP_YY'] = RL_HIP_YY * df_accel['alpha_pitch']
-    df_torque['T_RL_HIP_ZZ'] = RL_HIP_ZZ * df_accel['alpha_yaw']
-    
-    df_torque['T_RL_THIGH_XX'] = RL_THIGH_XX * df_accel['alpha_roll']
-    df_torque['T_RL_THIGH_YY'] = RL_THIGH_YY * df_accel['alpha_pitch']
-    df_torque['T_RL_THIGH_ZZ'] = RL_THIGH_ZZ * df_accel['alpha_yaw']
-    
-    df_torque['T_RL_CALF_XX'] = RL_CALF_XX * df_accel['alpha_roll']
-    df_torque['T_RL_CALF_YY'] = RL_CALF_YY * df_accel['alpha_pitch']
-    df_torque['T_RL_CALF_ZZ'] = RL_CALF_ZZ * df_accel['alpha_yaw']
-    
-    df_torque_mags = pd.DataFrame()
-    df_torque_mags['T_FR_HIP'] = np.sqrt(np.square(df_torque['T_FR_HIP_XX']) + np.square(df_torque['T_FR_HIP_YY']) + np.square(df_torque['T_FR_HIP_ZZ']))
-    df_torque_mags['T_FR_THIGH'] = np.sqrt(np.square(df_torque['T_FR_THIGH_XX']) + np.square(df_torque['T_FR_THIGH_YY']) + np.square(df_torque['T_FR_THIGH_ZZ']))
-    df_torque_mags['T_FR_CALF'] = np.sqrt(np.square(df_torque['T_FR_CALF_XX']) + np.square(df_torque['T_FR_CALF_YY']) + np.square(df_torque['T_FR_CALF_ZZ']))
-
-    df_torque_mags['T_FL_HIP'] = np.sqrt(np.square(df_torque['T_FL_HIP_XX']) + np.square(df_torque['T_FL_HIP_YY']) + np.square(df_torque['T_FL_HIP_ZZ']))
-    df_torque_mags['T_FL_THIGH'] = np.sqrt(np.square(df_torque['T_FL_THIGH_XX']) + np.square(df_torque['T_FL_THIGH_YY']) + np.square(df_torque['T_FL_THIGH_ZZ']))
-    df_torque_mags['T_FL_CALF'] = np.sqrt(np.square(df_torque['T_FL_CALF_XX']) + np.square(df_torque['T_FL_CALF_YY']) + np.square(df_torque['T_FL_CALF_ZZ']))
-    
-    df_torque_mags['T_RR_HIP'] = np.sqrt(np.square(df_torque['T_RR_HIP_XX']) + np.square(df_torque['T_RR_HIP_YY']) + np.square(df_torque['T_RR_HIP_ZZ']))
-    df_torque_mags['T_RR_THIGH'] = np.sqrt(np.square(df_torque['T_RR_THIGH_XX']) + np.square(df_torque['T_RR_THIGH_YY']) + np.square(df_torque['T_RR_THIGH_ZZ']))
-    df_torque_mags['T_RR_CALF'] = np.sqrt(np.square(df_torque['T_RR_CALF_XX']) + np.square(df_torque['T_RR_CALF_YY']) + np.square(df_torque['T_RR_CALF_ZZ']))
-    
-    df_torque_mags['T_RL_HIP'] = np.sqrt(np.square(df_torque['T_RL_HIP_XX']) + np.square(df_torque['T_RL_HIP_YY']) + np.square(df_torque['T_RL_HIP_ZZ']))
-    df_torque_mags['T_RL_THIGH'] = np.sqrt(np.square(df_torque['T_RL_THIGH_XX']) + np.square(df_torque['T_RL_THIGH_YY']) + np.square(df_torque['T_RL_THIGH_ZZ']))
-    df_torque_mags['T_RL_CALF'] = np.sqrt(np.square(df_torque['T_RL_CALF_XX']) + np.square(df_torque['T_RL_CALF_YY']) + np.square(df_torque['T_RL_CALF_ZZ']))
-    
-    df_torque_mags['Environment'] = 'Corridor'
-    df_torque_mags.to_csv('corridor/corridor_tmag_data.csv', index=False)
-    df_torque_mags.head()
-    
     params_footforce, _ = optimize(savgoldiff, f_aligned.astype(float), dt)
     _, dfootforcedt_hat = savgoldiff(f_aligned.astype(float), dt, **params_footforce)
     
@@ -189,20 +304,8 @@ def main():
     dfootforcedt_hat_data.to_csv('corridor/corridor_dfootforce_dt_data.csv', index=False)
     print(dfootforcedt_hat_data.head())
     
-    df_torque_mags['total_torque'] = df_torque_mags.drop(
-        columns=['Environment']
-    ).sum(axis=1)
-    
-    df_model = pd.DataFrame({
-        "time": t_ref, 
-        "total_torque": df_torque_mags['total_torque'],
-        "footforce": f_aligned,
-        "d_footforce_dt": dfootforcedt_hat,
-        "environment": "Corridor"
-    })
-    
-    df_model.to_csv('corridor/corridor_model_data.csv', index=False)
-    print(df_model.head())
-    
+    newton_model(corridor_data, dt, t_ref, f_aligned, dfootforcedt_hat)
+    euler_model(corridor_data, dt, t_ref, f_aligned, dfootforcedt_hat)
+
 if __name__ == "__main__":
     main()
