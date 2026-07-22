@@ -139,9 +139,6 @@ BIC(model_clean, model_reduced)
 
 #AIC and BIC of full model is significantly better.
 
-rmse <- sqrt(mean(residuals(model_clean)^2))
-rmse
-
 pred <- fitted(model_clean)
 actual <- log(clean_data$total_torque)
 
@@ -151,3 +148,15 @@ plot(pred, actual,
      main = "Observed vs Predicted (Linear Regression)")
 
 abline(0, 1, col = "red", lwd = 2)
+
+summary(model_clean)
+rmse <- sqrt(mean(residuals(model_clean)^2))
+mae <- mean(abs(residuals(model_clean)))
+rmse
+mae
+vif(model_clean)
+
+#Prevent it from scrambling the categorical variables.
+clean_data$row_id <- seq_len(nrow(clean_data))
+
+write.csv(clean_data, "robot_dataset_cleaned.csv", row.names = FALSE)
