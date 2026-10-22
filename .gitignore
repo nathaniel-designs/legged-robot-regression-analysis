@@ -1,18 +1,27 @@
-.Rhistory
-<<<<<<< HEAD
-.Rproj.user
-=======
-<<<<<<< HEAD
-*.Rhistory
-=======
-.Rproj.user
->>>>>>> 0e15c18 (Add code to calculate jerk)
-.Rproj.user
-.RData
-.Rhistory
->>>>>>> HEAD@{1}
+
+#macOS and editor files
 .DS_Store
-roboregressionanalysis.r
+.vscode/
+
+#R files
+.Rhistory
+.RData
+.Rproj.user/
+
+#Large raw robot telemetry
+environments/*/motorstate/
+environments/*/highstate/data/
+environments/*/imu_raw/
+
+#Generated model outputs
 model_output.png
 Rplots.pdf
-images/
+
+#Local backup repositories
+repo-backup.git/
+
+#Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
