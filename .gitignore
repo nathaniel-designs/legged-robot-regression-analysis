@@ -12,4 +12,7 @@
 .Rhistory
 >>>>>>> HEAD@{1}
 .DS_Store
-bags/*.bag
+roboregressionanalysis.r
+model_output.png
+Rplots.pdf
+images/
