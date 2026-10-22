@@ -25,3 +25,6 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
+
+#R
+/roboregressionanalysis.r
