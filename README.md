@@ -20,9 +20,9 @@ However, the binary results are not useful for doing an overall prediction on a 
 
 ### Visual Results
 
-<!-- ![Regression Model Comparisons](./images/regression_model_output.png) -->
+![Regression Model Comparisons](./images/regression_model_output.png)
 
-<!-- ![Binary/Classifier Model Comparisons](./images/binary_model_output.png) -->
+![Binary/Classifier Model Comparisons](./images/binary_model_output.png)
 
 ## Setup
 
@@ -30,7 +30,7 @@ In order to run the programs, please download the raw telemetry data and meshes 
 
 [Download raw telemetry data and meshes](https://drive.google.com/drive/folders/1-b6iYPl5ys0zUKxFf0gAWh1Oz2aTRBZB?usp=sharing)
 
-### Telemetry Data
+### Telemetry Data and Meshes
 
 1. Open the folders (`motorstate` and `highstate`).
 2. Open each environment (`corridor`, `grass`, `indoor`, `parking`, `running`).
